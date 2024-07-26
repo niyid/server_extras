@@ -1,0 +1,38 @@
+When a message begins to propagate, it will use the location of the message as the center, and radiate (travel) in all directions radially. There is no fixed geohash center. The geohash center is always the location of the message currently propagating. The annuli are then constructed dynamically and the users placed in this dynamic construct using the user locations. So each message has a set of annuli of which the users are dynamically added and placed appropriately based on their location just before propagation begins. So register and unregister are wrong because a user cannot be added to an annulus until the the associated message begins to propagate.
+
+Add attenuation simulation to propagate() and add randomized selection of users in annuli based on attenuated sound (wave) intensity.
+
+Also register users who have received a message by maintaining them in a set; and use this list to avoid a user receiving the message again in a rebroadcast.
+
+Do not delete a message after broadcast. Delete the message after maintaining it for 2 days. Use the message expiration field which is a datetime field to remove expired messages. This is performed by a cron that runs every 2 days.
+
+Notify all users on a message set with the message using the websocket function.
+
+Add the functions below to achieve that with modifications where necessary:
+
+async def handle_connection(websocket, path):
+    relay_server = RelayServer()
+    try:
+        async for message in websocket:
+            data = json.loads(message)
+            if data["action"] == "register":
+                await relay_server.register(websocket, data["deviceid"], data["geohash"])
+            elif data["action"] == "broadcast":
+                await relay_server.broadcast(data["deviceid"], data["message"])
+            elif data["action"] == "rebroadcast":
+                await relay_server.rebroadcast(data["deviceid"], data["message_id"])
+            elif data["action"] == "update_location":
+                await relay_server.update_location(data["deviceid"], data["geohash"])
+    except websockets.exceptions.ConnectionClosedError:
+        pass
+    finally:
+        # Clean up when the connection is closed
+        for deviceid in relay_server.users:
+            await relay_server.unregister(deviceid)
+
+async def main():
+    async with websockets.serve(handle_connection, "0.0.0.0", 7071):
+        print(f"Server running on port 7071")
+        await asyncio.Future()  # Keep the server running
+
+asyncio.run(main())

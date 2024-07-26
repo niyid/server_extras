@@ -1,0 +1,7 @@
+When a message is sent out, it is received by the server and it starts to travel in both directions in a straight line in MDS space at the speed of sound. This is an MDS representation of sound radiating outwards radially in 2D space. 
+
+It travels for a maximum distance of 198 km and attenuates to 0% starting from 100%. As it travels, it creates "annulus" at 3 km intervals. These intervals (annulus) are spaces defining locations that users subscribe to (based on their location) which are updated when the user moves by 3 km.
+
+User locations are overlayed on the same space on which the sound propagates; and within one annulus or the other. The first annulus is 0 to 2.9999km range. The second is 3 to 5.9999km range...and so on. When a user location is updated, it is to locate which annulus he is currently located. A user whose MDS location is 1.2 (converted to kms) for instance is located within the first annulus. Another user whose MDS location is 4.6 (again converted to kms) is located within the second annulus...and so on. So, users within each annulus receive updates from the message and are subscribed to the message topic.
+
+So for each new message sent out by a user, the message radiates radially at the speed of sound. Users located within each annulus as it radiates outward receive updates when the message intersects the annulus; as it continues to radiate till it totally dissipates at 198km distance from source.
