@@ -1,31 +1,51 @@
-import pymupdf  # PyMuPDF
+import pymupdf
 
-def extract_pages_and_paragraphs(pdf_path):
-    # Open the PDF file
+def extract_paragraphs_excluding_headers(pdf_path, spacing_threshold=10, font_size_threshold=14, header_y_threshold=100, min_paragraph_length=20):
     doc = pymupdf.open(pdf_path)
-    
-    # Initialize a dictionary to hold the pages and paragraphs
     pdf_content = {}
-    
-    # Iterate through each page
-    for page_num in range(len(doc)):
-        # Load the page
-        page = doc.load_page(page_num)
+
+    for page_number, page in enumerate(doc, start=1):
+        text_dict = page.get_text("dict")
+        blocks = text_dict['blocks']
         
-        # Extract text from the page
-        text = page.get_text("text")
-        
-        # Split the text into paragraphs
-        paragraphs = text.split("\n\n")
-        
-        # Store the paragraphs in the dictionary
-        pdf_content[page_num + 1] = paragraphs
-    
+        paragraphs = []
+        current_paragraph = []
+        previous_bottom = None
+
+        for block in blocks:
+            # Only process text blocks
+            if 'lines' not in block:
+                continue
+
+            for line in block['lines']:
+                for span in line['spans']:
+                    top = span['bbox'][1]
+                    bottom = span['bbox'][3]
+                    text = span['text']
+                    font_size = span['size']
+
+                    # Exclude blocks that are likely headers based on font size, position, and length
+                    if (font_size > font_size_threshold and top < header_y_threshold) or len(text.strip()) < min_paragraph_length:
+                        continue
+
+                    if previous_bottom is not None and (top - previous_bottom) > spacing_threshold:
+                        if len(" ".join(current_paragraph).strip()) >= min_paragraph_length:
+                            paragraphs.append(" ".join(current_paragraph).strip())
+                        current_paragraph = []
+
+                    current_paragraph.append(text)
+                    previous_bottom = bottom
+
+        if current_paragraph and len(" ".join(current_paragraph).strip()) >= min_paragraph_length:
+            paragraphs.append(" ".join(current_paragraph).strip())
+
+        pdf_content[page_number] = paragraphs
+
     return pdf_content
 
 def main():
     pdf_path = "test.pdf"
-    pdf_content = extract_pages_and_paragraphs(pdf_path)
+    pdf_content = extract_paragraphs_excluding_headers(pdf_path)
     
     # Print the extracted pages and paragraphs
     for page_num, paragraphs in pdf_content.items():
