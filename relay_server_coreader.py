@@ -97,22 +97,23 @@ class RelayServer:
     async def notify_page_turn(self, session_id):
         print(f"notify_page_turn {session_id}")
         session = self.sessions[session_id]
-        current_page = session['current_page']
-
-        session['current_page'] += 1
+        page_count = self.page_count(session_id)
 
         # Ensure the page number starts at 1, not 0
-        if session['current_page'] < 1:
-            session['current_page'] = 1
+        if session['current_page'] < page_count:
+            session['current_page'] += 1
+
+        current_page = session['current_page']
 
         message = {
             'type': 'turn_page',
             'count': len(session['peers']),
-            'current_page': session['current_page']
+            'current_page': current_page,
+            'page_count': page_count
         }
-
-        message['page'] = self.extract_page(session_id, session['current_page'])
-
+            
+        message['page'] = self.extract_page(session_id, current_page)
+        message['page_count'] = page_count
         message_json = json.dumps(message)
 
         #print(f"notify_paragraph_turn message= {message_json}")
@@ -170,9 +171,16 @@ class RelayServer:
         pdf_path = f"{BASE_PDF_PATH}/{session_id}.pdf"
         doc = pymupdf.open(pdf_path)
         page = doc.load_page(page_number - 1)  # Page numbers are zero-based
-        text_dict = page.get_text("html")
+        text_html = page.get_text("html")
         doc.close()
-        return text_dict
+        return text_html
+
+    def page_count(self, session_id):
+        pdf_path = f"{BASE_PDF_PATH}/{session_id}.pdf"
+        doc = pymupdf.open(pdf_path)
+        page_count = doc.page_count
+        doc.close()
+        return page_count
 
     def extract_paragraphs(self, session_id, page_number, spacing_threshold=10, font_size_threshold=14, header_y_threshold=100, min_paragraph_length=20):
         pdf_path = f"{BASE_PDF_PATH}/{session_id}.pdf"
